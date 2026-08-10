@@ -71,12 +71,11 @@ def main():
                 f"  state={result.state.charger_state_name:<22} "
                 f"plug={result.state.plug_state} "
                 f"p1={result.state.p1_current}A "
+                f"site={result.site_current}A "
+                f"vehicle_ct={result.vehicle_current}A "
+                f"solar={result.solar_current}A "
                 f"hub_duty_limit={result.state.hub_duty_limit_amps}A "
                 f"max_current_raw={result.state.max_current_raw} "
-                f"watchdog_cur_raw={result.state.watchdog_current_raw} "
-                f"watchdog_time_raw={result.state.watchdog_time_raw} "
-                f"duty_timer_raw={result.state.charge_duty_timer_raw} "
-                f"mains_raw={result.state.state_of_mains_raw}"
             )
 
             time.sleep(POLL_INTERVAL_SECONDS)

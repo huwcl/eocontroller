@@ -78,13 +78,19 @@ class EoCharger:
             _LOGGER.warning("Controller response was not valid ASCII")
             return None
 
-        # RX frame is "!<payload><checksum>\r\n" - strip the leading "!"
-        # for checksum verification, then the trailing checksum + CRLF.
-        body, checksum = text[1:-3], text[-3:-1]
-        if not protocol.verify_checksum(body, checksum):
+        # RX frame is "<marker><payload><checksum>\r" - the checksum covers
+        # everything except itself and the trailing \r, INCLUDING the
+        # leading marker byte. That marker isn't guaranteed to be "!" - the
+        # board has been observed sending other values there - so it's
+        # treated as an opaque frame marker by position, not matched
+        # against a fixed character.
+        checksum_body, checksum = text[:-3], text[-3:-1]
+        if not protocol.verify_checksum(checksum_body, checksum):
             _LOGGER.warning("Controller response failed checksum verification")
             return None
 
+        # Strip the leading marker byte and the trailing checksum for the
+        # payload we hand back to the caller.
         return text[1:-3]
 
     def _exchange_with_retry(self, packet: str, recv_delay: float) -> str:

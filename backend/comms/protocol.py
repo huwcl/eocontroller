@@ -173,14 +173,16 @@ def parse_state_frame(payload: str) -> ChargerState:
     """Decode a SET_LIMIT response payload (checksum and frame markers
     already stripped) into a ChargerState.
 
-    `payload` is expected to start with "!" as position 0, matching the
-    1-indexed slice positions documented in the protocol notes - the
-    caller is responsible for putting that "!" back before calling this,
-    since the raw response has it stripped during checksum handling.
+    `payload` is expected to start with a marker byte at position 0
+    (whatever the board sends there - not guaranteed to be "!", see
+    charger.py), followed by the state fields. The checksum is NOT part
+    of this string - it's stripped and verified separately in
+    charger.py._exchange() before this function ever sees the data, so
+    the full field map ends at eco7_switch (77 characters), not 79.
     """
-    if len(payload) < 79:
+    if len(payload) < 77:
         raise ProtocolError(
-            f"state frame too short: expected at least 79 chars, got {len(payload)}"
+            f"state frame too short: expected at least 77 chars, got {len(payload)}"
         )
 
     def h(start: int, end: int) -> int:
