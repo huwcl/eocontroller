@@ -1,7 +1,0 @@
-[charging]
-# Amps requested automatically every time the eocontroller service
-# starts - this includes normal boot/manual restarts AND crash-triggered
-# restarts (systemd's Restart=always brings the service back up the same
-# way regardless of why it stopped). 0 means "don't charge automatically
-# on startup" - the API can always change this once the service is up.
-startup_amps = 32
