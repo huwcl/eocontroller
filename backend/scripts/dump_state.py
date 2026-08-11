@@ -67,12 +67,18 @@ def main():
             writer.writerow(row)
             f.flush()
 
+            # vehicle_current in PollResult is deliberately overwritten with
+            # p1_current (see charger.py) - it's not the raw CT reading. For
+            # this diagnostic we want the actual raw clamp value, so pull it
+            # directly rather than through the normal result object.
+            raw_ct = charger._ct.read_currents()
+
             print(
                 f"  state={result.state.charger_state_name:<22} "
                 f"plug={result.state.plug_state} "
                 f"p1={result.state.p1_current}A "
                 f"site={result.site_current}A "
-                f"vehicle_ct={result.vehicle_current}A "
+                f"vehicle_ct_raw={raw_ct['vehicle']}A "
                 f"solar={result.solar_current}A "
                 f"hub_duty_limit={result.state.hub_duty_limit_amps}A "
                 f"max_current_raw={result.state.max_current_raw} "
