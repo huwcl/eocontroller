@@ -1,0 +1,15 @@
+[Unit]
+Description=eocontroller, EO charger API and background poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/eocontroller/repo/backend
+ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 80
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
