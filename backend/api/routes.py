@@ -6,11 +6,13 @@ never import comms/ or touch the hardware directly. All hardware access
 goes through core/poller.py's background loop.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from core.state import state
 from core.session_logger import DB_PATH
+from core.status import build_status_payload
+from core.ws_manager import manager as ws_manager
 from comms.protocol import MAX_CHARGE_AMPS
 import sqlite3
 
@@ -27,24 +29,32 @@ class SetLimitRequest(BaseModel):
 @router.get("/status")
 async def get_status():
     async with state.lock:
-        if state.latest is None:
-            raise HTTPException(
-                status_code=503,
-                detail="No data yet - poller hasn't completed a cycle",
-            )
-        result = state.latest
-        error = state.last_error
-        requested = state.requested_amps
+        return build_status_payload(state)
 
-    return {
-        "requested_amps": requested,
-        "charger_state": result.state.charger_state_name,
-        "plug_state": result.state.plug_state,
-        "vehicle_current_amps": result.state.p1_current,
-        "hub_duty_limit_amps": result.state.hub_duty_limit_amps,
-        "site_current_amps": result.site_current,
-        "last_error": error,
-    }
+
+@router.websocket("/ws")
+async def websocket_status(websocket: WebSocket):
+    """Pushes a status update once a second automatically - no polling
+    needed on the frontend. poller.py calls ws_manager.broadcast() after
+    each successful poll; this endpoint just registers the connection
+    and keeps it open until the client disconnects."""
+    await ws_manager.connect(websocket)
+
+    # Send an immediate snapshot on connect, rather than making the
+    # client wait up to a full poll interval for its first update.
+    async with state.lock:
+        payload = build_status_payload(state)
+    await websocket.send_json(payload)
+
+    try:
+        while True:
+            # We don't expect the client to send anything meaningful -
+            # this just keeps the connection open and lets us detect a
+            # disconnect via the exception it raises when the client
+            # goes away.
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await ws_manager.disconnect(websocket)
 
 
 @router.post("/limit")

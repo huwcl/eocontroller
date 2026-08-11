@@ -15,6 +15,8 @@ import logging
 from comms import EoCharger, ChargerCommsError
 from core.state import state
 from core.session_logger import SessionLogger
+from core.status import build_status_payload
+from core.ws_manager import manager as ws_manager
 from config import load_config
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,10 +51,17 @@ async def run_poll_loop():
             async with state.lock:
                 state.latest = result
                 state.last_error = None
+                payload = build_status_payload(state)
             session_logger.record(result, requested)
         except ChargerCommsError as e:
             _LOGGER.warning("Poll failed: %s", e)
             async with state.lock:
                 state.last_error = str(e)
+                payload = build_status_payload(state)
+
+        # Broadcast every cycle, success or failure - a failed poll is
+        # useful information for the frontend too (e.g. showing a
+        # "connection issue" indicator), not just something to hide.
+        await ws_manager.broadcast(payload)
 
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
